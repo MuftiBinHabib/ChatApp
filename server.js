@@ -1,37 +1,32 @@
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
-  }
+const io = socketIo(server);
+
+// Serve the built frontend files
+app.use(express.static(path.join(__dirname, 'public'))); // Change to 'dist' if using React/Vue
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html')); // Change to 'dist/index.html' for React/Vue
 });
 
-app.use(express.json()); // Enable JSON parsing for future API use
-
 io.on('connection', (socket) => {
-  console.log('A user connected:', socket.id);
+  console.log('A user connected');
 
   socket.on('message', (msg) => {
     io.emit('message', { text: msg, id: socket.id });
   });
 
   socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
+    console.log('A user disconnected');
   });
 });
 
-// Graceful shutdown
-process.on('SIGINT', () => {
-  console.log('Server shutting down...');
-  io.close();
-  server.close(() => process.exit(0));
-});
-
-server.listen(8080, () => {
-  console.log('Server running on http://localhost:8080');
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
