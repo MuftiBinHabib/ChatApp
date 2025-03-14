@@ -1,32 +1,37 @@
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
-const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
-
-// Serve the built frontend
-app.use(express.static(path.join(__dirname, 'public')));  // If static files are in public/
-
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+const io = socketIo(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  }
 });
 
+app.use(express.json()); // Enable JSON parsing for future API use
+
 io.on('connection', (socket) => {
-  console.log('A user connected');
+  console.log('A user connected:', socket.id);
 
   socket.on('message', (msg) => {
     io.emit('message', { text: msg, id: socket.id });
   });
 
   socket.on('disconnect', () => {
-    console.log('A user disconnected');
+    console.log('User disconnected:', socket.id);
   });
 });
 
-const PORT = process.env.PORT || 8080;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// Graceful shutdown
+process.on('SIGINT', () => {
+  console.log('Server shutting down...');
+  io.close();
+  server.close(() => process.exit(0));
+});
+
+server.listen(8080, () => {
+  console.log('Server running on http://localhost:8080');
 });
